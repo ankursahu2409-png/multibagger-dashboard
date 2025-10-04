@@ -43,8 +43,12 @@ api_key = "d790a960246149cab2d304c3adb7421c"
 
 with st.spinner("🔄 Fetching live headlines and analyzing sentiment..."):
     df['Headlines'] = df['Stock'].apply(lambda name: fetch_headlines(name, api_key, max_articles=3))
-    df['Headline'] = df['Headlines'].apply(lambda hlist: hlist[0] if hlist else "No headline found")
-    df['Sentiment_Score'] = df['Headline'].apply(analyze_sentiment)
+   def average_sentiment(headlines):
+    scores = [analyze_sentiment(h) for h in headlines if h]
+    return round(sum(scores) / len(scores), 3) if scores else 0
+
+df['Sentiment_Score'] = df['Headlines'].apply(average_sentiment)
+df['Headline'] = df['Headlines'].apply(lambda hlist: hlist[0] if hlist else "No headline found")
 
 # Score stocks
 scored_df = score_stocks(df)
