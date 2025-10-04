@@ -14,9 +14,9 @@ def save_cache(cache):
     with open(CACHE_FILE, "w") as f:
         json.dump(cache, f)
 
-def fetch_headlines(stock_name, api_key, max_articles=5):
+def fetch_headlines(stock_name, api_key, max_articles=5, refresh=False):
     cache = load_cache()
-    if stock_name in cache:
+    if not refresh and stock_name in cache:
         return cache[stock_name]
 
     url = f"https://newsapi.org/v2/everything?q={stock_name}&language=en&sortBy=publishedAt&pageSize={max_articles}&apiKey={api_key}"

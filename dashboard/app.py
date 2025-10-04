@@ -6,7 +6,7 @@ import streamlit as st
 import pandas as pd
 from screener.scoring import score_stocks
 from sentiment.analyzer import analyze_sentiment
-from news.fetcher import fetch_headlines  # <-- New module
+from news.fetcher import fetch_headlines
 
 st.set_page_config(page_title="Multibagger Stock Dashboard", layout="wide")
 st.title("📊 Multibagger Stock Analyzer")
@@ -15,7 +15,10 @@ st.title("📊 Multibagger Stock Analyzer")
 st.sidebar.header("🔍 Filter Stocks")
 min_roe = st.sidebar.slider("Minimum ROE (%)", 0, 30, 10)
 max_de_ratio = st.sidebar.slider("Max Debt/Equity", 0.0, 1.0, 0.5)
-min_sentiment = st.sidebar.slider("Minimum Sentiment Score", -1, 1, 0)
+min_sentiment = st.sidebar.slider("Minimum Sentiment Score", -1.0, 1.0, 0.0)
+
+# Refresh toggle
+refresh_news = st.sidebar.checkbox("🔄 Refresh Headlines", value=False)
 
 # CSV upload
 st.sidebar.header("📁 Upload Your CSV")
@@ -38,17 +41,18 @@ else:
         'PEG_Ratio': [1.5, 1.2, 1.8, 2.0]
     })
 
-# Fetch headlines + sentiment with spinner
-api_key = "d790a960246149cab2d304c3adb7421c"
-
-with st.spinner("🔄 Fetching live headlines and analyzing sentiment..."):
-    df['Headlines'] = df['Stock'].apply(lambda name: fetch_headlines(name, api_key, max_articles=3))
-   def average_sentiment(headlines):
+# Sentiment averaging function
+def average_sentiment(headlines):
     scores = [analyze_sentiment(h) for h in headlines if h]
     return round(sum(scores) / len(scores), 3) if scores else 0
 
-df['Sentiment_Score'] = df['Headlines'].apply(average_sentiment)
-df['Headline'] = df['Headlines'].apply(lambda hlist: hlist[0] if hlist else "No headline found")
+# Fetch headlines + sentiment
+api_key = "d790a960246149cab2d304c3adb7421c"
+
+with st.spinner("🔄 Fetching live headlines and analyzing sentiment..."):
+    df['Headlines'] = df['Stock'].apply(lambda name: fetch_headlines(name, api_key, max_articles=3, refresh=refresh_news))
+    df['Headline'] = df['Headlines'].apply(lambda hlist: hlist[0] if hlist else "No headline found")
+    df['Sentiment_Score'] = df['Headlines'].apply(average_sentiment)
 
 # Score stocks
 scored_df = score_stocks(df)
@@ -80,7 +84,7 @@ with tab2:
 with tab3:
     st.subheader("Sentiment Breakdown")
     st.dataframe(filtered_df[['Stock', 'Headline', 'Sentiment_Score']])
-    
+
 with tab4:
     st.subheader("Latest Headlines per Stock")
     for i, row in filtered_df.iterrows():
