@@ -17,12 +17,33 @@ min_roe = st.sidebar.slider("Minimum ROE (%)", 0, 30, 10)
 max_de_ratio = st.sidebar.slider("Max Debt/Equity", 0.0, 1.0, 0.5)
 min_sentiment = st.sidebar.slider("Minimum Sentiment Score", -1.0, 1.0, 0.0)
 
+st.sidebar.subheader("🔍 Analyze Specific Stocks")
+stock_input = st.sidebar.text_area("Enter stock tickers (comma-separated)", "RELIANCE.NS, INFY.NS, TCS.BO")
+manual_tickers = [s.strip().upper() for s in stock_input.split(",") if s.strip()]
+
+st.sidebar.subheader("📈 Filter by Index")
+index_choice = st.sidebar.selectbox("Select Index", ["None", "Nifty 50", "BSE 100", "Nifty Midcap"])
+
 # Refresh toggle
 refresh_news = st.sidebar.checkbox("🔄 Refresh Headlines", value=False)
 
 # CSV upload
 st.sidebar.header("📁 Upload Your CSV")
 uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type="csv")
+
+# Load index tickers if selected
+index_map = {
+    "Nifty 50": "data/nifty_50.csv",
+    "BSE 100": "data/bse_100.csv",
+    "Nifty Midcap": "data/nifty_midcap.csv"
+}
+index_tickers = []
+if index_choice != "None" and index_choice in index_map:
+    try:
+        index_df = pd.read_csv(index_map[index_choice])
+        index_tickers = index_df['Ticker'].str.upper().tolist()
+    except Exception as e:
+        st.error(f"Error loading index data: {e}")
 
 # Load data
 if uploaded_file:
@@ -32,6 +53,7 @@ else:
     st.info("ℹ️ Using sample data until a CSV is uploaded.")
     df = pd.DataFrame({
         'Stock': ['Tech Inc', 'Revenue Growth Co', 'Stable Earnings Ltd', 'New Product Corp'],
+        'Ticker': ['TECH.NS', 'REVGRWTH.NS', 'STABLE.NS', 'NEWPROD.NS'],
         'Revenue_Growth_YoY': [0.15, 0.25, 0.05, 0.30],
         'Profit_Growth_YoY': [0.10, 0.12, 0.08, 0.05],
         'Debt_Equity': [0.5, 0.3, 0.4, 0.6],
@@ -40,6 +62,14 @@ else:
         'Promoter_Holding': [0.60, 0.70, 0.55, 0.40],
         'PEG_Ratio': [1.5, 1.2, 1.8, 2.0]
     })
+
+# Apply ticker filters
+combined_tickers = set(manual_tickers + index_tickers)
+if combined_tickers:
+    df = df[df['Ticker'].isin(combined_tickers)]
+    st.success(f"Analyzing {len(df)} selected stocks.")
+else:
+    st.warning("No tickers selected. Showing default sample data.")
 
 # Sentiment averaging function
 def average_sentiment(headlines):
